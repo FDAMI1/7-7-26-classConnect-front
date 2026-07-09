@@ -1,7 +1,7 @@
 /** Text — all typography routes through here for a consistent type system. */
 import React from "react";
 import { Text as RNText, TextStyle, StyleProp } from "react-native";
-import { typography, palette } from "../designSystem";
+import { typography, palette, fonts } from "../designSystem";
 
 type Variant =
   | "display-lg"
@@ -37,6 +37,8 @@ interface Props {
   tone?: Tone;
   weight?: "400" | "500" | "600" | "700";
   align?: "left" | "center" | "right";
+  /** Render in Geist Mono with tabular numerals — for numbers, IDs, money, data. */
+  numeric?: boolean;
   numberOfLines?: number;
   adjustsFontSizeToFit?: boolean;
   style?: StyleProp<TextStyle>;
@@ -74,24 +76,39 @@ const toneMap: Record<Tone, string> = {
   warning: palette.warning.text,
 };
 
+const clampMono = (w: "400" | "500" | "600" | "700") =>
+  w === "700" ? "600" : w;
+
 export function Text({
   variant = "body",
   tone = "primary",
   weight,
   align,
+  numeric,
   numberOfLines,
   adjustsFontSizeToFit,
   style,
   children,
 }: Props) {
   const base = variantMap[variant];
+  // Resolve the effective weight, then bind the matching Geist face — with
+  // static per-weight fonts the family (not fontWeight) drives the rendered
+  // weight, so it must be set explicitly.
+  const w = (weight ||
+    (base as { fontWeight?: string }).fontWeight ||
+    "400") as "400" | "500" | "600" | "700";
+  const fontFamily = numeric ? fonts.mono[clampMono(w)] : fonts.sans[w];
+
   return (
     <RNText
       numberOfLines={numberOfLines}
       adjustsFontSizeToFit={adjustsFontSizeToFit}
       style={[
         base,
-        { color: toneMap[tone] },
+        { color: toneMap[tone], fontFamily },
+        numeric
+          ? { fontVariant: ["tabular-nums"] as TextStyle["fontVariant"] }
+          : undefined,
         weight ? { fontWeight: weight } : undefined,
         align ? { textAlign: align } : undefined,
         style,

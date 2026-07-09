@@ -42,7 +42,7 @@ export function Card({
     borderRadius: radius.lg,
     borderWidth: outline.width,
     borderColor: outline.color,
-    padding: padded ? 16 : 0,
+    padding: padded ? 18 : 0,
     ...ELEV[level],
   };
 

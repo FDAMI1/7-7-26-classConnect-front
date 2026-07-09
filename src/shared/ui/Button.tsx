@@ -38,9 +38,9 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { height: 38, px: 16, fontSize: 13 as const },
-  md: { height: 48, px: 18, fontSize: 15 as const },
-  lg: { height: 54, px: 22, fontSize: 16 as const },
+  sm: { height: 36, px: 14, fontSize: 13 as const },
+  md: { height: 44, px: 18, fontSize: 14 as const },
+  lg: { height: 50, px: 22, fontSize: 15 as const },
 };
 
 export function Button({

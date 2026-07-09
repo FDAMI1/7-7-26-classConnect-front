@@ -12,7 +12,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import type { LucideIcon } from "lucide-react-native";
-import { palette, radius, shadows, motion, outline } from "../designSystem";
+import { palette, radius, motion, outline } from "../designSystem";
 import { Text } from "./Text";
 
 type Tone = "light" | "teal" | "cobalt" | "slate";
@@ -22,20 +22,28 @@ interface Props {
   value: string;
   icon?: LucideIcon;
   hint?: string;
+  /** A signed change annotation, e.g. "+42 this month". */
+  delta?: string;
+  deltaTone?: "success" | "danger" | "tertiary";
   tone?: Tone;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
 /**
- * StatTile — a bento metric block (2026 bento-grid). `tone` switches between a
- * light surface and accent fills; press gives a soft spring.
+ * StatTile — a single metric. Engineered look: flat surface, hairline border,
+ * the number set in Geist Mono tabular figures, an uppercase micro-label, and
+ * an optional signed delta. One accent tone (`slate`/`teal`/`cobalt` all map to
+ * the ink/accent fill) is reserved for a single north-star tile — the rest stay
+ * neutral so colour never becomes decoration.
  */
 export function StatTile({
   label,
   value,
   icon: Icon,
   hint,
+  delta,
+  deltaTone = "tertiary",
   tone = "light",
   onPress,
   style,
@@ -46,48 +54,63 @@ export function StatTile({
   }));
 
   const dark = tone !== "light";
-  const valueColor = dark ? "#FFFFFF" : palette.text.primary;
-  const labelColor = dark ? "rgba(255,255,255,0.82)" : palette.text.tertiary;
-  const iconColor = dark ? "#FFFFFF" : palette.teal[600];
-  const iconBg = dark ? "rgba(255,255,255,0.18)" : palette.teal[50];
-
   const fill =
-    tone === "teal"
-      ? palette.teal[600]
-      : tone === "cobalt"
-        ? palette.cobalt[600]
-        : tone === "slate"
-          ? palette.ink[800]
-          : palette.surface.primary;
+    tone === "slate"
+      ? palette.ink[900]
+      : dark
+        ? palette.accent[600]
+        : palette.surface.primary;
+  const valueColor = dark ? "#FFFFFF" : palette.text.primary;
+  const labelColor = dark ? "rgba(255,255,255,0.70)" : palette.text.tertiary;
+  const iconColor = dark ? "#FFFFFF" : palette.accent[600];
+  const iconBg = dark ? "rgba(255,255,255,0.14)" : palette.accent[50];
+  const deltaColor = dark
+    ? "rgba(255,255,255,0.80)"
+    : deltaTone === "success"
+      ? palette.success.text
+      : deltaTone === "danger"
+        ? palette.danger.text
+        : palette.text.tertiary;
 
   const inner = (
     <>
-      {Icon ? (
-        <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
-          <Icon size={18} color={iconColor} strokeWidth={2} />
-        </View>
-      ) : null}
-      <View style={{ marginTop: Icon ? 14 : 0 }}>
+      <View style={styles.top}>
+        <Text
+          variant="overline"
+          style={{
+            color: labelColor,
+            flex: 1,
+            marginRight: 8,
+            letterSpacing: 0.8,
+          }}
+          numberOfLines={2}
+        >
+          {label}
+        </Text>
+        {Icon ? (
+          <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
+            <Icon size={15} color={iconColor} strokeWidth={2} />
+          </View>
+        ) : null}
+      </View>
+      <View>
         <Text
           variant="display-sm"
+          numeric
           numberOfLines={1}
           adjustsFontSizeToFit
           style={{ color: valueColor }}
         >
           {value}
         </Text>
-        <Text variant="caption" style={{ color: labelColor, marginTop: 2 }}>
-          {label}
-        </Text>
-        {hint ? (
+        {delta || hint ? (
           <Text
             variant="label-sm"
-            style={{
-              color: dark ? "rgba(255,255,255,0.75)" : palette.text.tertiary,
-              marginTop: 6,
-            }}
+            numeric={!!delta}
+            style={{ color: deltaColor, marginTop: 6, letterSpacing: 0 }}
+            numberOfLines={1}
           >
-            {hint}
+            {delta || hint}
           </Text>
         ) : null}
       </View>
@@ -102,7 +125,6 @@ export function StatTile({
           backgroundColor: fill,
           borderColor: dark ? "transparent" : outline.color,
         },
-        shadows.sm,
         style,
       ]}
     >
@@ -116,7 +138,7 @@ export function StatTile({
     <Animated.View style={[animStyle, style ? undefined : { flex: 1 }]}>
       <Pressable
         onPress={onPress}
-        onPressIn={() => scale.set(withSpring(0.97, motion.spring.crisp))}
+        onPressIn={() => scale.set(withSpring(0.98, motion.spring.crisp))}
         onPressOut={() => scale.set(withSpring(1, motion.spring.gentle))}
       >
         {body}
@@ -131,13 +153,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: outline.width,
     padding: 18,
-    minHeight: 104,
+    minHeight: 116,
     justifyContent: "space-between",
   },
+  top: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
   iconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
+    width: 30,
+    height: 30,
+    borderRadius: radius.sm,
     alignItems: "center",
     justifyContent: "center",
   },

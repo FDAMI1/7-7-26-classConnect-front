@@ -13,11 +13,12 @@ import {
   MessageSquare,
   Building2,
   ReceiptText,
+  ArrowUpRight,
 } from "lucide-react-native";
 import { useAuthStore } from "@shared/store/useAuthStore";
 import { useDashboardSummary } from "@modules/dashboard/hooks/useDashboard";
 import { useSectionNav } from "@navigation/AppNavigator";
-import { palette } from "@shared/designSystem";
+import { palette, radius } from "@shared/designSystem";
 import {
   Screen,
   Text,
@@ -25,24 +26,21 @@ import {
   HStack,
   Card,
   StatTile,
-  GradientHero,
-  StatusChip,
   Button,
 } from "@shared/ui";
 
-/** The full platform roadmap — Phase 1 modules are Live; the rest light up as
- *  later phases ship. Shown to admins/staff so the scope is visible from day 1. */
-const MODULES: { icon: typeof Users; label: string; phase: number }[] = [
-  { icon: Building2, label: "Institute, Team & Roles", phase: 1 },
-  { icon: BookOpen, label: "Courses, Batches & Timetable", phase: 2 },
-  { icon: UserRound, label: "Admissions & Student Records", phase: 3 },
-  { icon: CalendarCheck2, label: "Attendance & Parent Alerts", phase: 4 },
-  { icon: Wallet, label: "Fees, Payments & Receipts", phase: 5 },
-  { icon: BookOpen, label: "LMS · Courses · Assignments", phase: 6 },
-  { icon: ClipboardList, label: "Exams, Marks & Report Cards", phase: 7 },
-  { icon: MessageSquare, label: "Communication & Parent App", phase: 8 },
-  { icon: Boxes, label: "Inventory, Assets & HR/Payroll", phase: 9 },
-  { icon: BarChart3, label: "AI Analytics, Reports & Exec", phase: 10 },
+/** The platform's modules — a quiet overview of what's inside. */
+const MODULES: { icon: typeof Users; label: string }[] = [
+  { icon: Building2, label: "Institute, Team & Roles" },
+  { icon: BookOpen, label: "Courses, Batches & Timetable" },
+  { icon: UserRound, label: "Admissions & Student Records" },
+  { icon: CalendarCheck2, label: "Attendance & Parent Alerts" },
+  { icon: Wallet, label: "Fees, Payments & Receipts" },
+  { icon: BookOpen, label: "Learning · Assignments · Quizzes" },
+  { icon: ClipboardList, label: "Exams, Marks & Report Cards" },
+  { icon: MessageSquare, label: "Communication & Parent App" },
+  { icon: Boxes, label: "Inventory, Assets & HR/Payroll" },
+  { icon: BarChart3, label: "AI Analytics, Reports & Exec" },
 ];
 
 export default function DashboardScreen() {
@@ -57,7 +55,6 @@ export default function DashboardScreen() {
   const role = user?.role ?? "staff";
   const isPortal = role === "parent" || role === "student";
   const p = data?.people;
-
   const todayPct = data?.attendance?.todayPercent;
   const fees = data?.fees;
   const money = (paise?: number | null) =>
@@ -65,14 +62,31 @@ export default function DashboardScreen() {
       ? "—"
       : "₹" +
         (paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 });
-  const tiles = [
+
+  const billed = (fees?.collected ?? 0) + (fees?.pending ?? 0);
+  const collPct =
+    billed > 0 ? Math.round(((fees?.collected ?? 0) / billed) * 100) : null;
+
+  const tiles: {
+    label: string;
+    value: string;
+    icon: typeof Users;
+    delta?: string;
+    deltaTone?: "success" | "danger" | "tertiary";
+  }[] = [
     { label: "Students", value: String(p?.students ?? 0), icon: UserRound },
     {
       label: "Attendance today",
       value: todayPct != null ? `${todayPct}%` : "—",
       icon: CalendarCheck2,
     },
-    { label: "Fees collected", value: money(fees?.collected), icon: Wallet },
+    {
+      label: "Fees collected",
+      value: money(fees?.collected),
+      icon: Wallet,
+      delta: collPct != null ? `${collPct}% of billed` : undefined,
+      deltaTone: "success",
+    },
     { label: "Pending fees", value: money(fees?.pending), icon: ReceiptText },
   ];
   const tileWidth = `${100 / cols}%` as const;
@@ -84,94 +98,62 @@ export default function DashboardScreen() {
       subtitle={organization?.name || "ClassConnect Pro"}
       refreshing={isRefetching || isLoading}
       onRefresh={refetch}
+      right={
+        isAdmin() ? (
+          <HStack gap={8}>
+            <Button
+              label="Team"
+              variant="secondary"
+              size="sm"
+              fullWidth={false}
+              onPress={() => go("Team")}
+            />
+            <Button
+              label="Settings"
+              variant="secondary"
+              size="sm"
+              fullWidth={false}
+              onPress={() => go("Settings")}
+            />
+          </HStack>
+        ) : undefined
+      }
     >
-      <GradientHero variant="hero">
-        <VStack gap={10}>
-          <StatusChip label={roleLabel(role)} tone="info" />
-          <Text variant="h2" tone="inverse">
-            {isPortal
-              ? "Welcome to your institute portal"
-              : "Your institute, one intelligent platform"}
-          </Text>
-          <Text variant="body" style={{ color: "rgba(255,255,255,0.88)" }}>
-            {isPortal
-              ? "Attendance, fees, learning and progress updates will appear here as your institute goes live."
-              : "Manage students, teachers, parents, fees, attendance, learning and administration — all connected and automated."}
-          </Text>
-          {isAdmin() && (
-            <HStack gap={10} style={{ marginTop: 8 }} wrap>
-              <Button
-                label="Invite your team"
-                variant="accent"
-                fullWidth={false}
-                onPress={() => go("Team")}
-              />
-              <Button
-                label="Institute settings"
-                variant="secondary"
-                fullWidth={false}
-                onPress={() => go("Settings")}
-              />
-            </HStack>
-          )}
-        </VStack>
-      </GradientHero>
-
-      {/* KPI bento — people in the institute (Phase 1). Academic KPIs join later. */}
-      {!isPortal && (
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            marginTop: 20,
-            marginHorizontal: -6,
-          }}
-        >
-          {tiles.map((t) => (
-            <View key={t.label} style={{ width: tileWidth, padding: 6 }}>
-              <StatTile label={t.label} value={t.value} icon={t.icon} />
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* AI-insight card — the one place a gradient/glow is allowed (2026 brief). */}
-      <GradientHero variant="ai" style={{ marginTop: 16 }}>
-        <HStack gap={12} align="center">
+      {!isPortal ? (
+        <>
+          {/* North-star + supporting KPIs. First tile is featured (dark). */}
           <View
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 12,
-              backgroundColor: "rgba(255,255,255,0.18)",
-              alignItems: "center",
-              justifyContent: "center",
+              flexDirection: "row",
+              flexWrap: "wrap",
+              marginHorizontal: -6,
             }}
           >
-            <Sparkles size={20} color="#FFFFFF" strokeWidth={2} />
+            {tiles.map((t, i) => (
+              <View key={t.label} style={{ width: tileWidth, padding: 6 }}>
+                <StatTile
+                  label={t.label}
+                  value={t.value}
+                  icon={t.icon}
+                  tone={i === 0 ? "slate" : "light"}
+                  delta={t.delta}
+                  deltaTone={t.deltaTone}
+                />
+              </View>
+            ))}
           </View>
-          <VStack gap={3} flex={1}>
-            <Text variant="label-lg" tone="inverse">
-              AI Insights
-            </Text>
-            <Text variant="body-sm" style={{ color: "rgba(255,255,255,0.86)" }}>
-              {isPortal
-                ? "Personalised progress summaries will appear here."
-                : "Attendance trends, fee forecasts and at-risk student alerts activate as you add academic data."}
-            </Text>
-          </VStack>
-        </HStack>
-      </GradientHero>
 
-      {/* Platform roadmap — visible scope of the full build */}
-      {!isPortal && (
-        <>
+          <InsightPanel
+            body="Attendance trends, fee forecasts and at-risk student alerts are computed from your live data."
+            onOpen={isAdmin() ? () => go("Executive") : undefined}
+          />
+
           <Text
-            variant="h3"
-            tone="primary"
-            style={{ marginTop: 28, marginBottom: 12 }}
+            variant="overline"
+            tone="tertiary"
+            style={{ marginTop: 32, marginBottom: 14 }}
           >
-            Platform modules
+            Platform
           </Text>
           <View
             style={{
@@ -180,60 +162,113 @@ export default function DashboardScreen() {
               marginHorizontal: -6,
             }}
           >
-            {MODULES.map((m) => {
-              const live = m.phase <= 10;
-              return (
-                <View
-                  key={m.label}
-                  style={{
-                    width: cols >= 4 ? "33.33%" : "100%",
-                    padding: 6,
-                  }}
-                >
-                  <Card padded>
-                    <HStack gap={12} align="center">
-                      <View
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
-                          backgroundColor: live
-                            ? palette.cobalt[50]
-                            : palette.ink[50],
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <m.icon
-                          size={18}
-                          color={live ? palette.cobalt[600] : palette.ink[400]}
-                          strokeWidth={1.9}
-                        />
-                      </View>
-                      <VStack gap={4} flex={1}>
-                        <Text
-                          variant="label-lg"
-                          tone="primary"
-                          numberOfLines={1}
-                        >
-                          {m.label}
-                        </Text>
-                        <StatusChip
-                          label={live ? "Live" : `Phase ${m.phase}`}
-                          tone={live ? "success" : "neutral"}
-                        />
-                      </VStack>
-                    </HStack>
-                  </Card>
-                </View>
-              );
-            })}
+            {MODULES.map((m) => (
+              <View
+                key={m.label}
+                style={{ width: cols >= 4 ? "50%" : "100%", padding: 6 }}
+              >
+                <Card padded>
+                  <HStack gap={12} align="center">
+                    <View style={styles.modIcon}>
+                      <m.icon
+                        size={17}
+                        color={palette.accent[600]}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <Text variant="label-lg" tone="primary" numberOfLines={1}>
+                      {m.label}
+                    </Text>
+                  </HStack>
+                </Card>
+              </View>
+            ))}
           </View>
+        </>
+      ) : (
+        <>
+          <Card>
+            <VStack gap={6}>
+              <Text variant="overline" tone="accent">
+                {roleLabel(role)} portal
+              </Text>
+              <Text variant="h3" tone="primary">
+                Welcome to {organization?.name || "your institute"}
+              </Text>
+              <Text variant="body-sm" tone="secondary">
+                Attendance, fees, learning and progress updates appear across
+                the sections in the sidebar as your institute posts them.
+              </Text>
+            </VStack>
+          </Card>
+          <InsightPanel body="Personalised progress summaries will appear here as academic data is recorded." />
         </>
       )}
     </Screen>
   );
 }
+
+function InsightPanel({ body, onOpen }: { body: string; onOpen?: () => void }) {
+  return (
+    <View style={styles.insight}>
+      <HStack gap={14} align="flex-start">
+        <View style={styles.insightIcon}>
+          <Sparkles size={18} color={palette.accent[300]} strokeWidth={2} />
+        </View>
+        <VStack gap={4} flex={1}>
+          <Text variant="label-lg" tone="inverse">
+            AI Insights
+          </Text>
+          <Text variant="body-sm" style={{ color: "rgba(255,255,255,0.72)" }}>
+            {body}
+          </Text>
+          {onOpen ? (
+            <Button
+              label="Open Executive & AI"
+              variant="secondary"
+              size="sm"
+              fullWidth={false}
+              rightIcon={
+                <ArrowUpRight
+                  size={15}
+                  color={palette.text.primary}
+                  strokeWidth={2}
+                />
+              }
+              onPress={onOpen}
+              style={{ marginTop: 10 }}
+            />
+          ) : null}
+        </VStack>
+      </HStack>
+    </View>
+  );
+}
+
+const styles = {
+  insight: {
+    marginTop: 20,
+    backgroundColor: palette.surface.dark,
+    borderRadius: radius.lg,
+    padding: 20,
+  },
+  insightIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: "rgba(255,255,255,0.10)",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  modIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: palette.accent[50],
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+};
 
 function roleLabel(role: string) {
   switch (role) {
